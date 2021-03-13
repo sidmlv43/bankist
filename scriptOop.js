@@ -60,7 +60,12 @@ class Account {
         this._pin = pin; 
     }
 
-    setMovementdate(arr) {
+    setSingleMovementDate() {
+        const date = new Date();
+        this._movementsDate.push(date.toISOString());
+    }
+
+    setMultipleMovementDate(arr) {
         this._movementsDate = [...arr]; 
     }
 
@@ -101,16 +106,40 @@ class Account {
 const account1 = new Account()
 account1.owner = 'Jonas Schmedtmann';
 account1.multideposit([200, 450, -400, 3000, -650, -130, 70, 1300])
+account1.setMultipleMovementDate(
+    [
+        '2019-11-30T09:48:16.867Z',
+        '2019-12-25T06:04:23.907Z',
+        '2020-01-25T14:18:46.235Z',
+        '2020-02-05T16:33:06.386Z',
+        '2020-04-10T14:43:26.374Z',
+        '2020-06-25T18:49:59.371Z',
+        '2020-07-26T12:01:20.894Z',
+        '2021-03-01T13:15:33.035Z',
+      ]
+)
 account1.setInterestRate(10);
 account1.setPin(1111);
 
 const account2 = new Account()
-account2.owner = 'Jessica Davis';
+account2.owner = 'Siddharth Malviya';
 account2.setInterestRate(7);
 account2.multideposit([5000, 3400, -150, -790, -3210, -1000, 8500, -30])
+account2.setMultipleMovementDate(
+    [
+        '2019-11-18T21:31:17.178Z',
+        '2019-12-23T07:42:02.383Z',
+        '2020-01-28T09:15:04.904Z',
+        '2020-04-01T10:17:24.185Z',
+        '2020-05-08T14:11:59.604Z',
+        '2020-05-27T17:01:17.194Z',
+        '2020-07-11T23:36:17.929Z',
+        '2020-07-12T10:51:36.790Z',
+      ]
+)
 account2.setPin(2222);
 
-const accounts = [account1, account2];
+const accounts = [account1, account2]; 
 
 
 // Elements
@@ -159,6 +188,27 @@ const genAllUserName = accounts.forEach(acc => {
 })
 
 
+// formating movement dates
+
+const formatMovementDate = function(date) {
+
+    const calcDaysPast = (date1, date2) => Math.round(Math.abs((date2-date1) /(1000 * 60 * 60 * 24)));
+  
+    const daysPassed = calcDaysPast(new Date(), date);
+    console.log(daysPassed)
+    if(daysPassed === 0) return 'Today';
+    if(daysPassed === 1) return 'Yesterday';
+    if(daysPassed <= 7) return `${daysPassed} days ago`;
+    else{
+      const day = `${date.getDate()}`.padStart(2, 0);
+      const month = `${date.getMonth() + 1}`.padStart(2, 0);
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`
+    };
+   
+  }
+
 
 // Login System
 btnLogin.addEventListener('click', function(e) {
@@ -177,20 +227,56 @@ btnLogin.addEventListener('click', function(e) {
 
     updateUI();
     
-    
+    if(timer) clearInterval(timer);
+    timer = startLogoutTimer();
 })
+
+
+// Logout Timer
+
+const startLogoutTimer = function() {
+
+    const tick = function(){
+      // In each call print the remaining time to UI
+      const min = String(Math.trunc(time / 60)).padStart(2,0);
+      const sec = String(time % 60).padStart(2,0);
+  
+      labelTimer.textContent = `${min}: ${sec}`;
+  
+     
+      console.log(time)
+      if(time == 0) {
+        clearInterval(timer);
+        labelWelcome.textContent = 'Log in to get Started';
+        containerApp.style.opacity = 0;
+      }
+  
+       // Decrease 1s
+       time--;
+    }
+     // set time to 5 minutes
+  let time = 30;
+  // call the timer every second
+  tick();
+  const timer = setInterval(tick, 1000)
+  
+  return timer;
+}
+
 
 // display Movements
 
 const displayMovement = function(currentAccount, sort = false) {
     containerMovements.innerHTML = '';
     const movs = sort ?  currentAccount.getSortedMovement() : currentAccount.getMovement();
-
     movs.forEach(function(mov, i) {
+        const date = new Date(currentAccount.getMovementDate()[i])
+    const displayDate = formatMovementDate(date);
         const type = mov>0 ? 'deposit':'withdrawal';
+
         const html = `<div class="movements__row">
                         <div class="movements__type movements__type--${type}">${i + 1} ${type}</div>
-                        <div class="movements__date">3 days ago</div>
+                        <div class="movements__date">${displayDate}</div>
                         <div class="movements__value">${mov}</div>
                         </div>`;
 
@@ -228,11 +314,15 @@ btnTransfer.addEventListener('click', function(e) {
         receiver.deposit(amount);
         currentAccount.withdraw(amount);
         inputTransferTo.value = inputTransferAmount.value = ''
+        currentAccount.setSingleMovementDate();
+        receiver.setSingleMovementDate();
     }else{
         console.log('Invalid transfer')
     }
 
     updateUI();
+    clearInterval(timer);
+    timer = startLogoutTimer();
 
 })
 
@@ -243,8 +333,10 @@ btnLoan.addEventListener('click', function(e) {
     currentAccount.requestLoan(loanAmt);
     setTimeout(()=> {
         updateUI()
-        inputLoanAmount.value = '';
-        inputLoanAmount.blur();
     }, 2000)
+    inputLoanAmount.value = '';
+    inputLoanAmount.blur();
+    clearInterval(timer);
+    timer = startLogoutTimer();
 })
 
